@@ -3,7 +3,6 @@ import argparse
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description="Spark Structured Streaming Crime Aggregator"
     )
@@ -31,7 +30,9 @@ def main():
     args = parser.parse_args()
 
     spark = SparkSession.builder.appName("CrimesStructuredStreaming").getOrCreate()
+    spark.sparkContext.setLogLevel("WARN")
 
+    # Schema for raw CSV from Kafka
     crime_schema = T.StructType(
         [
             T.StructField("ID", T.StringType()),
@@ -46,6 +47,7 @@ def main():
         ]
     )
 
+    # Load static IUCR codes
     iucr_df = (
         spark.read.option("header", True)
         .csv(args.static_file)
@@ -56,33 +58,39 @@ def main():
         )
     )
 
+    # Read streaming data from Kafka
     raw_stream = (
         spark.readStream.format("kafka")
         .option("kafka.bootstrap.servers", args.bootstrap_servers)
         .option("subscribe", args.input_topic)
+        .option("startingOffsets", "earliest")
         .load()
     )
 
-    csv_lines = raw_stream.select(F.expr("CAST(value AS STRING)").alias("csv_line"))
-
-    crimes = csv_lines.select(
-        F.from_json(F.col("csv_line").cast(T.StringType()), crime_schema).alias("crime")
+    # Parse CSV lines from Kafka 'value'
+    crimes = raw_stream.selectExpr("CAST(value AS STRING) as csv_line").select(
+        F.from_csv("csv_line", crime_schema).alias("crime")
     )
 
-    crimes = crimes.withColumn(
-        "event_time", F.to_timestamp(F.col("crime.Date"), "MM/dd/yyyy hh:mm:ss a")
+    # Flatten the struct and parse timestamp
+    crimes_flat = crimes.select(
+        "crime.*",  # expands all fields: ID, Date, IUCR, Arrest, Domestic, District, etc.
+        F.to_timestamp("crime.Date", "MM/dd/yyyy hh:mm:ss a").alias("event_time"),
     )
 
-    enriched = crimes.join(iucr_df, crimes.crime.IUCR == iucr_df.IUCR, "left")
+    print("crimes_flat schema:")
+    crimes_flat.printSchema()
 
-    aggregated = (
+    # Enrich with IUCR static data
+    enriched = crimes_flat.join(iucr_df, on="IUCR", how="left")
+
+    # Compute monthly aggregations
+    agg = (
         enriched.withColumn("month", F.date_trunc("month", "event_time"))
         .groupBy("month", "category", "District")
         .agg(
             F.count("*").alias("total_crimes"),
-            F.sum(F.when(F.col("crime.Arrest") == "true", 1).otherwise(0)).alias(
-                "arrests"
-            ),
+            F.sum(F.when(F.col("Arrest") == "true", 1).otherwise(0)).alias("arrests"),
             F.sum(F.when(F.col("Domestic") == "true", 1).otherwise(0)).alias(
                 "domestics"
             ),
@@ -92,11 +100,13 @@ def main():
         )
     )
 
+    # Write results in update mode (delay=A) to console for now
     query = (
-        aggregated.writeStream.format("console")
-        .outputMode("update")
-        .option("truncate", "false")
-        .option("numRows", 30)
+        agg.writeStream.outputMode("update")
+        .format("console")
+        .option("truncate", False)
+        .option("numRows", 50)
+        .option("checkpointLocation", args.checkpoint_location)
         .start()
     )
 
