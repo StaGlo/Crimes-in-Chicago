@@ -21,11 +21,11 @@ def main():
         required=True,
         help="Path to IUCR codes CSV",
     )
-    # parser.add_argument(
-    #     "--checkpoint-location",
-    #     required=True,
-    #     help="Directory for Spark checkpointing (e.g. gs://bucket/checkpoints)",
-    # )
+    parser.add_argument(
+        "--checkpoint-location",
+        required=True,
+        help="Directory for Spark checkpointing",
+    )
 
     args = parser.parse_args()
 
