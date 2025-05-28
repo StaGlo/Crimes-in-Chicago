@@ -33,19 +33,7 @@ def main():
     spark.sparkContext.setLogLevel("WARN")
 
     # Schema for raw CSV from Kafka
-    crime_schema = T.StructType(
-        [
-            T.StructField("ID", T.StringType()),
-            T.StructField("Date", T.StringType()),
-            T.StructField("IUCR", T.StringType()),
-            T.StructField("Arrest", T.StringType()),
-            T.StructField("Domestic", T.StringType()),
-            T.StructField("District", T.IntegerType()),
-            T.StructField("ComArea", T.IntegerType()),
-            T.StructField("Latitude", T.DoubleType()),
-            T.StructField("Longitude", T.DoubleType()),
-        ]
-    )
+    crime_schema_csv = "ID STRING, Date STRING, IUCR STRING, Arrest STRING, Domestic STRING, District INT, ComArea INT, Latitude DOUBLE, Longitude DOUBLE"
 
     # Load static IUCR codes
     iucr_df = (
@@ -71,15 +59,17 @@ def main():
     crimes = raw_stream.selectExpr("CAST(value AS STRING) as csv_line").select(
         F.from_csv(
             F.col("csv_line"),
-            "ID STRING, Date STRING, IUCR STRING, Arrest STRING, Domestic STRING, District INT, ComArea INT, Latitude DOUBLE, Longitude DOUBLE",
+            crime_schema_csv,
             {"header": "false"},
         ).alias("crime")
     )
 
     # Flatten the struct and parse timestamp
     crimes_flat = crimes.select(
-        "crime.*",  # expands all fields: ID, Date, IUCR, Arrest, Domestic, District, etc.
-        F.to_timestamp("crime.Date", "MM/dd/yyyy hh:mm:ss a").alias("event_time"),
+        "crime.*",
+        F.to_timestamp(F.col("crime.Date"), "MM/dd/yyyy hh:mm:ss a").alias(
+            "event_time"
+        ),
     )
 
     print("crimes_flat schema:")
@@ -90,7 +80,7 @@ def main():
 
     # Compute monthly aggregations
     agg = (
-        enriched.withColumn("month", F.date_trunc("month", "event_time"))
+        enriched.withColumn("month", F.date_trunc("month", F.col("event_time")))
         .groupBy("month", "category", "District")
         .agg(
             F.count("*").alias("total_crimes"),
