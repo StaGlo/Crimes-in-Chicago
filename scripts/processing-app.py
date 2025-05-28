@@ -67,8 +67,10 @@ def main():
     # Flatten the struct and parse timestamp
     crimes = crimes.select("crime.*")
     crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date")))
-    crimes = crimes.withColumn("year_month", F.date_format(F.col("event_time"), "yyyy-MM"))
-    crimes.drop("Date", "ComArea", "Latitude", "Longitude")
+    crimes = crimes.withColumn(
+        "year_month", F.date_format(F.col("event_time"), "yyyy-MM")
+    )
+    crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
     print("crimes schema:")
     crimes.printSchema()
@@ -80,19 +82,11 @@ def main():
     enriched.printSchema()
 
     # Compute monthly aggregations
-    agg = (
-        enriched
-        .groupBy("year_month", "category", "District")
-        .agg(
-            F.count("*").alias("total_crimes"),
-            F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
-            F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
-                "domestics"
-            ),
-            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
-                "fbi_indexed"
-            ),
-        )
+    agg = enriched.groupBy("year_month", "category", "District").agg(
+        F.count("*").alias("total_crimes"),
+        F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
+        F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias("domestics"),
+        F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
     )
 
     # Write results in update mode (delay=A) to console for now
