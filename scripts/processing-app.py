@@ -78,14 +78,17 @@ def main():
     # Enrich with IUCR static data
     enriched = crimes_flat.join(iucr_df, on="IUCR", how="left")
 
+    print("enriched schema:")
+    enriched.printSchema()
+
     # Compute monthly aggregations
     agg = (
         enriched.withColumn("month", F.date_trunc("month", F.col("event_time")))
         .groupBy("month", "category", "District")
         .agg(
             F.count("*").alias("total_crimes"),
-            F.sum(F.when(F.col("Arrest") == "true", 1).otherwise(0)).alias("arrests"),
-            F.sum(F.when(F.col("Domestic") == "true", 1).otherwise(0)).alias(
+            F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
+            F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
                 "domestics"
             ),
             F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
