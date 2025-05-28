@@ -27,6 +27,7 @@ def main():
     #     required=True,
     #     help="Directory for Spark checkpointing (e.g. gs://bucket/checkpoints)",
     # )
+
     args = parser.parse_args()
 
     spark = SparkSession.builder.appName("CrimesStructuredStreaming").getOrCreate()
@@ -50,6 +51,7 @@ def main():
         .csv(args.static_file)
         .select(
             F.col("IUCR"),
+            F.col("PRIMARY DESCRIPTION").alias("category"),
             F.col("INDEX CODE").alias("index_code"),
         )
     )
@@ -61,10 +63,37 @@ def main():
         .load()
     )
 
-    csv_lines = raw_stream.select(F.expr("CAST(value AS STRING)").alias("line"))
+    csv_lines = raw_stream.select(F.expr("CAST(value AS STRING)").alias("csv_line"))
+
+    crimes = csv_lines.select(
+        F.from_json(F.col("csv_line").cast(T.StringType()), crime_schema).alias("crime")
+    )
+
+    crimes = crimes.withColumn(
+        "event_time", F.to_timestamp(F.col("crime.Date"), "MM/dd/yyyy hh:mm:ss a")
+    )
+
+    enriched = crimes.join(iucr_df, crimes.crime.IUCR == iucr_df.IUCR, "left")
+
+    aggregated = (
+        enriched.withColumn("month", F.date_trunc("month", "event_time"))
+        .groupBy("month", "category", "District")
+        .agg(
+            F.count("*").alias("total_crimes"),
+            F.sum(F.when(F.col("crime.Arrest") == "true", 1).otherwise(0)).alias(
+                "arrests"
+            ),
+            F.sum(F.when(F.col("Domestic") == "true", 1).otherwise(0)).alias(
+                "domestics"
+            ),
+            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
+                "fbi_indexed"
+            ),
+        )
+    )
 
     query = (
-        csv_lines.writeStream.format("console")
+        aggregated.writeStream.format("console")
         .outputMode("update")
         .option("truncate", "false")
         .option("numRows", 30)
