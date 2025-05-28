@@ -63,11 +63,15 @@ def main():
 
     csv_lines = raw_stream.select(F.expr("CAST(value AS STRING)").alias("line"))
 
-    print("CSV lines schema:")
-    csv_lines.printSchema()
+    query = (
+        csv_lines.writeStream.format("console")
+        .outputMode("update")
+        .option("truncate", "false")
+        .option("numRows", 30)
+        .start()
+    )
 
-    print("CSV lines sample:")
-    csv_lines.show(5, truncate=False)
+    query.awaitTermination()
 
 
 if __name__ == "__main__":

@@ -8,11 +8,6 @@ CRIMES_URL="https://www.cs.put.poznan.pl/kjankiewicz/bigdata/stream_project/crim
 # Local download directory
 DOWNLOAD_DIR="/tmp/crime_data"
 
-# Kafka settings
-CLUSTER_NAME=$(/usr/share/google/get_metadata_value attributes/dataproc-cluster-name)
-BOOTSTRAP_SERVER="${CLUSTER_NAME}-m:9092"
-TOPIC_NAME="crimes-in-chicago-topic"
-
 # --- Prepare workspace ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Cleaning and creating download directory at ${DOWNLOAD_DIR}"
 rm -rf "${DOWNLOAD_DIR}"
@@ -28,3 +23,9 @@ wget -q "${CRIMES_URL}" -O "${DOWNLOAD_DIR}/crimes.zip"
 # --- Unpack crimes data ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Unzipping crimes data"
 unzip -q "${DOWNLOAD_DIR}/crimes.zip" -d "${DOWNLOAD_DIR}/crimes"
+
+# --- Put static files in HDFS ---
+echo "$(date '+%Y-%m-%d %H:%M:%S') Uploading IUCR codes to HDFS"
+hadoop fs -mkdir -p /streaming/static
+hadoop fs -put -f /tmp/crime_data/IUCR_codes.csv /streaming/static/IUCR_codes.csv
+hadoop fs -ls /streaming/static
