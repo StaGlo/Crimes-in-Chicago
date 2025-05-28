@@ -69,7 +69,11 @@ def main():
 
     # Parse CSV lines from Kafka 'value'
     crimes = raw_stream.selectExpr("CAST(value AS STRING) as csv_line").select(
-        F.from_csv("csv_line", crime_schema).alias("crime")
+        F.from_csv(
+            F.col("csv_line"),
+            "ID STRING, Date STRING, IUCR STRING, Arrest STRING, Domestic STRING, District INT, ComArea INT, Latitude DOUBLE, Longitude DOUBLE",
+            {"header": "false"},
+        ).alias("crime")
     )
 
     # Flatten the struct and parse timestamp
