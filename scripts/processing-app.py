@@ -33,7 +33,7 @@ def main():
     spark.sparkContext.setLogLevel("WARN")
 
     # Schema for raw CSV from Kafka
-    crime_schema_csv = "ID STRING, Date STRING, IUCR STRING, Arrest STRING, Domestic STRING, District INT, ComArea INT, Latitude DOUBLE, Longitude DOUBLE"
+    crime_schema_csv = "ID STRING, Date STRING, IUCR STRING, Arrest STRING, Domestic STRING, District DOUBLE, ComArea DOUBLE, Latitude DOUBLE, Longitude DOUBLE"
 
     # Load static IUCR codes
     iucr_df = (
@@ -65,26 +65,24 @@ def main():
     )
 
     # Flatten the struct and parse timestamp
-    crimes_flat = crimes.select(
-        "crime.*",
-        F.to_timestamp(F.col("crime.Date"), "MM/dd/yyyy hh:mm:ss a").alias(
-            "event_time"
-        ),
-    )
+    crimes = crimes.select("crime.*")
+    crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date")))
+    crimes = crimes.withColumn("year_month", F.date_format(F.col("event_time"), "yyyy-MM"))
+    crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
-    print("crimes_flat schema:")
-    crimes_flat.printSchema()
+    print("crimes schema:")
+    crimes.printSchema()
 
     # Enrich with IUCR static data
-    enriched = crimes_flat.join(iucr_df, on="IUCR", how="left")
+    enriched = crimes.join(iucr_df, on="IUCR", how="left")
 
     print("enriched schema:")
     enriched.printSchema()
 
     # Compute monthly aggregations
     agg = (
-        enriched.withColumn("month", F.date_trunc("month", F.col("event_time")))
-        .groupBy("month", "category", "District")
+        enriched
+        .groupBy("year_month", "category", "District")
         .agg(
             F.count("*").alias("total_crimes"),
             F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
