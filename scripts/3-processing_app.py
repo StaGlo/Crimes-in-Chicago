@@ -84,28 +84,27 @@ def main():
 
     # Function to build update-mode stream (delay=A)
     def build_update(df):
-        return (
-            df.groupBy("year_month", "category", "District")
-            .agg(
-                F.count("*").alias("total_crimes"),
-                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias(
-                    "arrests"
-                ),
-                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
-                    "domestics"
-                ),
-                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
-                    "fbi_indexed"
-                ),
-            )
-            .writeStream.outputMode("update")
+        agg = df.groupBy("year_month", "category", "District").agg(
+            F.count("*").alias("total_crimes"),
+            F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
+            F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
+                "domestics"
+            ),
+            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
+                "fbi_indexed"
+            ),
         )
+        return agg.writeStream.outputMode("update")
 
-    # Function to build append-mode stream with watermark (delay=C)
+    # Build APPEND-mode query with 1-month window & watermark (delay=C)
     def build_append(df):
-        return (
+        windowed = (
             df.withWatermark("event_time", "31 days")
-            .groupBy("year_month", "category", "District")
+            .groupBy(
+                F.window("event_time", "30 days").alias("w"),
+                F.col("category"),
+                F.col("District"),
+            )
             .agg(
                 F.count("*").alias("total_crimes"),
                 F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias(
@@ -118,8 +117,17 @@ def main():
                     "fbi_indexed"
                 ),
             )
-            .writeStream.outputMode("append")
+            .select(
+                F.date_format(F.col("w.start"), "yyyy-MM").alias("year_month"),
+                "category",
+                "District",
+                "total_crimes",
+                "arrests",
+                "domestics",
+                "fbi_indexed",
+            )
         )
+        return windowed.writeStream.outputMode("append")
 
     # Set delay mode based on argument
     if args.delay == "A":
