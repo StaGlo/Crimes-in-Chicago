@@ -20,7 +20,7 @@ mkdir -p "${DOWNLOAD_DIR}"
 
 # --- Clean HDFS directory ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Cleaning HDFS directory at ${HDFS_DIR}"
-hadoop fs -rm -fr "${HDFS_DIR}"
+hadoop fs -rm -f -r "${HDFS_DIR}"
 
 # --- Create HDFS static directory ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Creating HDFS directory for static files at ${HDFS_STATIC_DIR}"

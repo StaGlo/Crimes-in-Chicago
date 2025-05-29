@@ -19,7 +19,8 @@ spark-submit \
     --bootstrap-servers "$BOOTSTRAP_SERVER" \
     --input-topic "$TOPIC_NAME" \
     --static-file "$HDFS_STATIC_FILE" \
-    --checkpoint-location "$HDFS_CHECKPOINTS"
+    --checkpoint-location "$HDFS_CHECKPOINTS" \
+    --delay A
 
 # --- Log completion ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Finished processing data."

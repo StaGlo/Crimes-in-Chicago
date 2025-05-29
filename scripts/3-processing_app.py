@@ -27,7 +27,12 @@ def main():
         required=True,
         help="Directory for Spark checkpointing",
     )
-
+    parser.add_argument(
+        "--delay",
+        choices=["A", "C"],
+        required=True,
+        help="Delay mode: A/C",
+    )
     args = parser.parse_args()
 
     # Initialize Spark session
@@ -72,16 +77,10 @@ def main():
     crimes = crimes.withColumn(
         "year_month", F.date_format(F.col("event_time"), "yyyy-MM")
     )
-    crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
-
-    print("crimes schema:")
-    crimes.printSchema()
+    crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude", "event_time")
 
     # Enrich with IUCR static data
     enriched = crimes.join(iucr_df, on="IUCR", how="left")
-
-    print("enriched schema:")
-    enriched.printSchema()
 
     # Compute monthly aggregations
     agg = enriched.groupBy("year_month", "category", "District").agg(
@@ -91,12 +90,18 @@ def main():
         F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
     )
 
+    # Set delay mode based on argument
+    if args.delay == "A":
+        stream = agg.writeStream.outputMode("update")
+    elif args.delay == "C":
+        stream = agg.withWatermark("event_time", "31 days").writeStream.outputMode(
+            "append"
+        )
+
     # Write results in update mode (delay=A) to console for now
     query = (
-        agg.writeStream.outputMode("update")
-        .format("console")
+        stream.format("console")
         .option("truncate", False)
-        .option("numRows", 50)
         .option("checkpointLocation", args.checkpoint_location)
         .start()
     )

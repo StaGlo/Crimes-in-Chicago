@@ -40,7 +40,7 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
 3. Make all scripts executable:
 
    ```bash
-   chmod +x scripts/
+   chmod +x scripts/*
    ```
 
 ---
