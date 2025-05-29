@@ -35,7 +35,14 @@ until docker exec "${CONTAINER_NAME}" pg_isready -U "${DB_USER}" -d "${DB_NAME}"
 done
 echo " ready!"
 
-# --- Create the database if it doesn't exist ---
+# --- Drop and recreate the database ---
+echo "$(date '+%Y-%m-%d %H:%M:%S') Dropping and recreating database '${DB_NAME}'..."
+docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d postgres <<EOF
+DROP DATABASE IF EXISTS ${DB_NAME};
+CREATE DATABASE ${DB_NAME};
+EOF
+
+# --- Create the table ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Creating table ${TABLE_NAME} in database ${DB_NAME}..."
 docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
 CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (

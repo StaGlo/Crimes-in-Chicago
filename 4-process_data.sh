@@ -23,6 +23,9 @@ if [[ "$DELAY_OPTION" != "A" && "$DELAY_OPTION" != "C" ]]; then
     exit 1
 fi
 
+# --- Download used driver ---
+wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
+
 # --- Run Spark job as YARN application ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Launching Spark streaming job..."
 echo "Delay configuration: $DELAY_OPTION"
@@ -30,7 +33,7 @@ echo "Delay configuration: $DELAY_OPTION"
 spark-submit \
     --master yarn \
     --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
-    scripts/3-processing_app.py \
+    3-processing_app.py \
     --bootstrap-servers "$BOOTSTRAP_SERVER" \
     --input-topic "$TOPIC_NAME" \
     --static-file "$HDFS_STATIC_FILE" \

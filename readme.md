@@ -5,7 +5,7 @@ This README provides step-by-step instructions to set up and run the streaming c
 ---
 
 ## Running instructions
-### 1. Create Dataproc cluster.
+### 1. Create Dataproc cluster
 Run the following command to create a Dataproc cluster:
 
 ```bash
@@ -28,19 +28,36 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
 
 ---
 
-### 2. SSH into the Master Node and clone the repository
+### 2. SSH into the Master Node and prepare script files
 
 1. SSH into the master node of your newly created cluster:
-2. Clone and enter the project repository:
-
+2. Upload projekt2.zip to the master node.
+3. Unzip and enter projekt2 directory.
+4. Make all scripts executable:
    ```bash
-   git clone https://github.com/StaGlo/Crimes-in-Chicago.git
-   cd Crimes-in-Chicago
-   ```
-3. Make all scripts executable:
-
-   ```bash
-   chmod +x scripts/*
+   chmod +x *.sh
    ```
 
+### 3. Prepare environment
+1. Run following script to reset the environment and create Kafka topic:
+   ```bash
+   ./1a-reset_and_create_topic.sh
+   ```
+2. Run script to re-create or create PostreSQL database:
+   ```bash
+   ./1b-prepare_database.sh
+   ```
+3. Download used files and upload static files to HDFS:
+   ```bash
+   ./2a-get_data.sh
+   ```
+4. Run Kafka input streaming script (preferably in a new, separate terminal):
+   ```bash
+   ./2b-stream_data.sh
+   ```
+5. Run Python application as YARN application using `spark-submit`:
+   ```bash
+   ./4-process_data.sh
+   ```
+   
 ---
