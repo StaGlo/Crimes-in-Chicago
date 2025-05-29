@@ -24,6 +24,7 @@ if [[ "$DELAY_OPTION" != "A" && "$DELAY_OPTION" != "C" ]]; then
 fi
 
 # --- Download used driver ---
+echo "$(date '+%Y-%m-%d %H:%M:%S') Downloading PostgreSQL JDBC driver..."
 wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
 
 # --- Run Spark job as YARN application ---
