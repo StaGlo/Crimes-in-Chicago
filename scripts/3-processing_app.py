@@ -1,6 +1,14 @@
 from pyspark.sql import SparkSession, functions as F, types as T  # type: ignore
 import argparse
 
+# JDBC connection options for Docker Postgres
+jdbc_url = "jdbc:postgresql://localhost:5432/crimes"
+jdbc_props = {
+    "user": "postgres",
+    "password": "changeme",
+    "driver": "org.postgresql.Driver",
+}
+
 
 def main():
     # Argument parser for command line options
@@ -135,10 +143,15 @@ def main():
     else:
         stream = build_append(enriched)
 
+    # Writes each micro-batch into the crime_aggregates table
+    def write_to_postgres(batch_df, batch_id):
+        batch_df.write.mode("append").jdbc(
+            url=jdbc_url, table="crime_aggregates", properties=jdbc_props
+        )
+
     # Write results in update mode (delay=A) to console for now
     query = (
-        stream.format("console")
-        .option("truncate", False)
+        stream.foreachBatch(write_to_postgres)
         .option("checkpointLocation", args.checkpoint_location)
         .start()
     )
