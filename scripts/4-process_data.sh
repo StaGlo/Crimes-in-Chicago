@@ -10,6 +10,19 @@ TOPIC_NAME="crimes-in-chicago-topic"
 HDFS_CHECKPOINTS="/streaming/checkpoints"
 HDFS_STATIC_FILE="/streaming/static/IUCR_codes.csv"
 
+# --- Parse delay argument ---
+if [[ $# -ne 1 ]]; then
+  echo "Usage: $0 [A|C]"
+  exit 1
+fi
+
+DELAY_OPTION="$1"
+if [[ "$DELAY_OPTION" != "A" && "$DELAY_OPTION" != "C" ]]; then
+    echo "Invalid delay: '$DELAY_OPTION'. Must be 'A' or 'C'."
+    echo "Usage: $0 [A|C]"
+    exit 1
+fi
+
 # --- Run Spark job as YARN application ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Launching Spark streaming job..."
 spark-submit \
@@ -20,7 +33,7 @@ spark-submit \
     --input-topic "$TOPIC_NAME" \
     --static-file "$HDFS_STATIC_FILE" \
     --checkpoint-location "$HDFS_CHECKPOINTS" \
-    --delay A
+    --delay "$DELAY_OPTION"
 
 # --- Log completion ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Finished processing data."
