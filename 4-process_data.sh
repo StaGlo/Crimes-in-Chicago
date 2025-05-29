@@ -34,6 +34,8 @@ echo "Delay configuration: $DELAY_OPTION"
 spark-submit \
     --master yarn \
     --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \
+    --driver-class-path postgresql-42.6.0.jar \
+    --jars postgresql-42.6.0.jar \
     3-processing_app.py \
     --bootstrap-servers "$BOOTSTRAP_SERVER" \
     --input-topic "$TOPIC_NAME" \

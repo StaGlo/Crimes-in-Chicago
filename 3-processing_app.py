@@ -1,13 +1,6 @@
 from pyspark.sql import SparkSession, functions as F, types as T  # type: ignore
 import argparse
-
-# JDBC connection options for Docker Postgres
-jdbc_url = "jdbc:postgresql://localhost:5432/crimes"
-jdbc_props = {
-    "user": "postgres",
-    "password": "changeme",
-    "driver": "org.postgresql.Driver",
-}
+import socket
 
 
 def main():
@@ -42,6 +35,17 @@ def main():
         help="Delay mode: A/C",
     )
     args = parser.parse_args()
+
+    # Get hostname
+    master_host = socket.gethostname()
+
+    # JDBC connection options for Docker Postgres
+    jdbc_url = f"jdbc:postgresql://{master_host}:5432/crimes"
+    jdbc_props = {
+        "user": "postgres",
+        "password": "changeme",
+        "driver": "org.postgresql.Driver",
+    }
 
     # Initialize Spark session
     spark = SparkSession.builder.appName("CrimesStructuredStreaming").getOrCreate()

@@ -43,12 +43,13 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
 ### 3. Prepare environment
 1. Run following script to reset the environment and create Kafka topic:
    ```bash
-   ./1a-reset_and_create_topic.sh
+   ./1-reset_and_create_topic.sh
    ```
 2. Run script to re-create or create PostreSQL database:
    ```bash
-   ./1b-prepare_database.sh
+   ./5-prepare_database.sh
    ```
+   If above script fails, re-run it.
 3. Download used files and upload static files to HDFS:
    ```bash
    ./2a-get_data.sh
