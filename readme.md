@@ -38,6 +38,8 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
    chmod +x *.sh
    ```
 
+--- 
+
 ### 3. Prepare environment
 1. Run following script to reset the environment and create Kafka topic:
    ```bash
@@ -55,9 +57,12 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
    ```bash
    ./2b-stream_data.sh
    ```
-5. Run Python application as YARN application using `spark-submit`:
+5. Run Python application as YARN application using `spark-submit` (use `A` or `C` mode):
    ```bash
-   ./4-process_data.sh
+   ./4-process_data.sh A
    ```
-   
+   ```bash
+   ./4-process_data.sh C
+   ```
+
 ---
