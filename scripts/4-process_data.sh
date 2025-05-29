@@ -12,8 +12,8 @@ HDFS_STATIC_FILE="/streaming/static/IUCR_codes.csv"
 
 # --- Parse delay argument ---
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 [A|C]"
-  exit 1
+    echo "Usage: $0 [A|C]"
+    exit 1
 fi
 
 DELAY_OPTION="$1"
@@ -25,6 +25,8 @@ fi
 
 # --- Run Spark job as YARN application ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Launching Spark streaming job..."
+echo "Delay configuration: $DELAY_OPTION"
+
 spark-submit \
     --master yarn \
     --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 \

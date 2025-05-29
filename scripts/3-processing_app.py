@@ -77,26 +77,55 @@ def main():
     crimes = crimes.withColumn(
         "year_month", F.date_format(F.col("event_time"), "yyyy-MM")
     )
-    crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude", "event_time")
+    crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
     # Enrich with IUCR static data
     enriched = crimes.join(iucr_df, on="IUCR", how="left")
 
-    # Compute monthly aggregations
-    agg = enriched.groupBy("year_month", "category", "District").agg(
-        F.count("*").alias("total_crimes"),
-        F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
-        F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias("domestics"),
-        F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
-    )
+    # Function to build update-mode stream (delay=A)
+    def build_update(df):
+        return (
+            df.groupBy("year_month", "category", "District")
+            .agg(
+                F.count("*").alias("total_crimes"),
+                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias(
+                    "arrests"
+                ),
+                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
+                    "domestics"
+                ),
+                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
+                    "fbi_indexed"
+                ),
+            )
+            .writeStream.outputMode("update")
+        )
+
+    # Function to build append-mode stream with watermark (delay=C)
+    def build_append(df):
+        return (
+            df.withWatermark("event_time", "31 days")
+            .groupBy("year_month", "category", "District")
+            .agg(
+                F.count("*").alias("total_crimes"),
+                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias(
+                    "arrests"
+                ),
+                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
+                    "domestics"
+                ),
+                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
+                    "fbi_indexed"
+                ),
+            )
+            .writeStream.outputMode("append")
+        )
 
     # Set delay mode based on argument
     if args.delay == "A":
-        stream = agg.writeStream.outputMode("update")
-    elif args.delay == "C":
-        stream = agg.withWatermark("event_time", "31 days").writeStream.outputMode(
-            "append"
-        )
+        stream = build_update(enriched)
+    else:
+        stream = build_append(enriched)
 
     # Write results in update mode (delay=A) to console for now
     query = (
