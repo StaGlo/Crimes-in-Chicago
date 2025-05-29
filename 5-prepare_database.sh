@@ -46,13 +46,13 @@ EOF
 echo "$(date '+%Y-%m-%d %H:%M:%S') Creating table ${TABLE_NAME} in database ${DB_NAME}..."
 docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
 CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (
-  year_month   VARCHAR(7)    NOT NULL,
-  category     TEXT          NOT NULL,
-  district     INTEGER       NOT NULL,
-  total_crimes BIGINT        NOT NULL,
-  arrests      BIGINT        NOT NULL,
-  domestics    BIGINT        NOT NULL,
-  fbi_indexed  BIGINT        NOT NULL,
+  year_month   VARCHAR(7),
+  category     TEXT,
+  district     INTEGER,
+  total_crimes BIGINT,
+  arrests      BIGINT,
+  domestics    BIGINT,
+  fbi_indexed  BIGINT,
   PRIMARY KEY (year_month, category, district)
 );
 EOF

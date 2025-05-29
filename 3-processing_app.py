@@ -94,6 +94,11 @@ def main():
     # Enrich with IUCR static data
     enriched = crimes.join(iucr_df, on="IUCR", how="left")
 
+    # Fill missing values
+    enriched = enriched.na.fill(
+        {"category": "UNKNOWN", "year_month": "UNKNOWN_MONTH", "District": -1}
+    )
+
     # Function to build update-mode stream (delay=A)
     def build_update(df):
         agg = df.groupBy("year_month", "category", "District").agg(
@@ -106,7 +111,7 @@ def main():
                 "fbi_indexed"
             ),
         )
-        return agg.writeStream.outputMode("update")
+        return agg.writeStream.outputMode("complete")
 
     # Build APPEND-mode query with 1-month window & watermark (delay=C)
     def build_append(df):
@@ -149,11 +154,13 @@ def main():
 
     # Writes each micro-batch into the crime_aggregates table
     def write_to_postgres(batch_df, batch_id):
-        batch_df.write.mode("append").jdbc(
-            url=jdbc_url, table="crime_aggregates", properties=jdbc_props
+        (
+            batch_df.write.mode("overwrite")
+            .option("truncate", "true")
+            .jdbc(url=jdbc_url, table="crime_aggregates", properties=jdbc_props)
         )
 
-    # Write results in update mode (delay=A) to console for now
+    # Write results
     query = (
         stream.foreachBatch(write_to_postgres)
         .option("checkpointLocation", args.checkpoint_location)
