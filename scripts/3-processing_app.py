@@ -1,8 +1,9 @@
-from pyspark.sql import SparkSession, functions as F, types as T
+from pyspark.sql import SparkSession, functions as F, types as T  # type: ignore
 import argparse
 
 
 def main():
+    # Argument parser for command line options
     parser = argparse.ArgumentParser(
         description="Spark Structured Streaming Crime Aggregator"
     )
@@ -29,6 +30,7 @@ def main():
 
     args = parser.parse_args()
 
+    # Initialize Spark session
     spark = SparkSession.builder.appName("CrimesStructuredStreaming").getOrCreate()
     spark.sparkContext.setLogLevel("WARN")
 
@@ -64,7 +66,7 @@ def main():
         ).alias("crime")
     )
 
-    # Flatten the struct and parse timestamp
+    # Flatten the struct, parse timestamp and drop redundant columns
     crimes = crimes.select("crime.*")
     crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date")))
     crimes = crimes.withColumn(
