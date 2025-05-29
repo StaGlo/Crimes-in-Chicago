@@ -65,5 +65,9 @@ gcloud dataproc clusters create "${CLUSTER_NAME}" \
    ```bash
    ./4-process_data.sh C
    ```
+6. To query data from the database run script:
+   ```bash
+   ./6-query_data.sh
+   ```
 
 ---
