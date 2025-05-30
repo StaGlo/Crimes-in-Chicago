@@ -57,7 +57,7 @@ spark-submit \
     --checkpoint-location "$HDFS_CHECKPOINTS" \
     --delay "$DELAY_OPTION" \
     --window-days "$DAYS_OPTION" \
-    --treshold "$PERCENTAGE_OPTION" \
+    --threshold "$PERCENTAGE_OPTION" \
 
 # --- Log completion ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Finished processing data."
