@@ -103,9 +103,8 @@ def main():
         {"category": "UNKNOWN", "year_month": "UNKNOWN_MONTH", "District": -1}
     )
 
-    # Function to build update-mode stream (delay=A)
-    def build_update(df):
-        agg = df.groupBy("year_month", "category", "District").agg(
+    if args.delay == "A":
+        agg = enriched.groupBy("year_month", "category", "District").agg(
             F.count("*").alias("total_crimes"),
             F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
             F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
@@ -115,12 +114,11 @@ def main():
                 "fbi_indexed"
             ),
         )
-        return agg.writeStream.outputMode("complete")
+        stream = agg.writeStream.outputMode("complete")
 
-    # Build APPEND-mode query with 1-month window & watermark (delay=C)
-    def build_append(df):
+    elif args.delay == "C":
         windowed = (
-            df.withWatermark("event_time", "31 days")
+            enriched.withWatermark("event_time", "31 days")
             .groupBy(
                 F.window("event_time", "30 days").alias("w"),
                 F.col("category"),
@@ -148,13 +146,7 @@ def main():
                 "fbi_indexed",
             )
         )
-        return windowed.writeStream.outputMode("append")
-
-    # Set delay mode based on argument
-    if args.delay == "A":
-        stream = build_update(enriched)
-    else:
-        stream = build_append(enriched)
+        stream = windowed.writeStream.outputMode("append")
 
     # Writes each micro-batch into the crime_aggregates table
     def write_to_postgres(batch_df, batch_id):
