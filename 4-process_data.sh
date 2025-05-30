@@ -11,8 +11,8 @@ HDFS_CHECKPOINTS="/streaming/checkpoints"
 HDFS_STATIC_FILE="/streaming/static/IUCR_codes.csv"
 
 # --- Parse delay argument ---
-if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 [A|C]"
+if [[ $# -ne 3 ]]; then
+    echo "Usage: $0 [A|C] [P] [D]"
     exit 1
 fi
 
@@ -20,6 +20,20 @@ DELAY_OPTION="$1"
 if [[ "$DELAY_OPTION" != "A" && "$DELAY_OPTION" != "C" ]]; then
     echo "Invalid delay: '$DELAY_OPTION'. Must be 'A' or 'C'."
     echo "Usage: $0 [A|C]"
+    exit 1
+fi
+
+DAYS_OPTION="$2"
+if [[ ! "$DAYS_OPTION" =~ ^[0-9]+$ ]]; then
+    echo "Invalid days: '$DAYS_OPTION'. Must be a positive integer."
+    echo "Usage: $0 [A|C] [P] [D]"
+    exit 1
+fi
+
+PERCENTAGE_OPTION="$3"
+if [[ ! "$PERCENTAGE_OPTION" =~ ^[0-9]+$ ]] || [[ "$PERCENTAGE_OPTION" -lt 0 ]] || [[ "$PERCENTAGE_OPTION" -gt 100 ]]; then
+    echo "Invalid percentage: '$PERCENTAGE_OPTION'. Must be an integer between 0 and 100."
+    echo "Usage: $0 [A|C] [P] [D]"
     exit 1
 fi
 
@@ -41,7 +55,9 @@ spark-submit \
     --input-topic "$TOPIC_NAME" \
     --static-file "$HDFS_STATIC_FILE" \
     --checkpoint-location "$HDFS_CHECKPOINTS" \
-    --delay "$DELAY_OPTION"
+    --delay "$DELAY_OPTION" \
+    --window-days "$DAYS_OPTION" \
+    --treshold "$PERCENTAGE_OPTION" \
 
 # --- Log completion ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Finished processing data."

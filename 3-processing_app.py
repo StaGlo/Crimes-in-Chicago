@@ -34,6 +34,12 @@ def main():
         required=True,
         help="Delay mode: A/C",
     )
+    parser.add_argument(
+        "-D", "--window-days", type=int, default=7, help="Anomaly parameter: D"
+    )
+    parser.add_argument(
+        "-P", "--threshold", type=float, default=40.0, help="Anomaly parameter: P"
+    )
     args = parser.parse_args()
 
     # Get hostname
@@ -103,6 +109,32 @@ def main():
         {"category": "UNKNOWN", "year_month": "UNKNOWN_MONTH", "District": -1}
     )
 
+    # Find anomalies
+    anomalies = (
+        enriched.withWatermark("event_time", f"{args.window_days} days")
+        .groupBy(
+            F.window("event_time", f"{args.window_days} days", "1 day").alias("w"),
+            F.col("District"),
+        )
+        .agg(
+            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
+                "fbi_indexed"
+            ),
+            F.count("*").alias("total_crimes"),
+        )
+        .withColumn("pct_fbi", F.col("fbi_indexed") / F.col("total_crimes") * 100.0)
+        .filter(F.col("pct_fbi") >= args.threshold)
+        .select(
+            F.col("w.start").alias("window_start"),
+            F.col("w.end").alias("window_end"),
+            F.col("District"),
+            "fbi_indexed",
+            "total_crimes",
+            F.round(F.col("pct_fbi"), 2).alias("pct_fbi"),
+        )
+    )
+
+    # Create stream based on delay mode
     if args.delay == "A":
         agg = enriched.groupBy("year_month", "category", "District").agg(
             F.count("*").alias("total_crimes"),
@@ -163,7 +195,16 @@ def main():
         .start()
     )
 
+    anomaly_query = (
+        anomalies.writeStream.outputMode("append")
+        .format("console")
+        .option("truncate", False)
+        .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
+        .start()
+    )
+
     query.awaitTermination()
+    anomaly_query.awaitTermination()
 
 
 if __name__ == "__main__":
