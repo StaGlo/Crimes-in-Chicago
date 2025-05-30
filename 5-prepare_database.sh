@@ -8,6 +8,7 @@ DB_NAME="crimes"
 DB_USER="postgres"
 DB_PASS="changeme"
 TABLE_NAME="crime_aggregates"
+ANOMALIES_TABLE_NAME="crime_anomalies"
 
 # --- Pull the Docker image ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Pulling Docker image ${IMAGE}..."
@@ -55,6 +56,20 @@ CREATE TABLE IF NOT EXISTS ${TABLE_NAME} (
   domestics    BIGINT,
   fbi_indexed  BIGINT,
   PRIMARY KEY (year_month, category, district)
+);
+EOF
+
+# --- Create the anomalies table ---
+echo "$(date '+%Y-%m-%d %H:%M:%S') Creating anomalies table ${ANOMALIES_TABLE_NAME} in database ${DB_NAME}..."
+docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
+CREATE TABLE IF NOT EXISTS ${TABLE} (
+  window_start TIMESTAMP,
+  window_end   TIMESTAMP,
+  district     INTEGER,
+  fbi_indexed  BIGINT,
+  total_crimes BIGINT,
+  pct_fbi      DOUBLE,
+  PRIMARY KEY (window_start, district)
 );
 EOF
 

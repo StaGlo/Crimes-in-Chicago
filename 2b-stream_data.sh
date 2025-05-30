@@ -22,8 +22,8 @@ for csvfile in "${DOWNLOAD_DIR}/crimes/crimes-in-chicago_result"/*.csv; do
             --property "parse.headers=false" \
             --property "key.separator=:"
 
-        # Sleep
-        sleep 1
+        # Sleep ?
+        # sleep 1
 
     done
 done
