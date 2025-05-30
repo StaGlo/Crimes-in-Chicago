@@ -188,6 +188,13 @@ def main():
             .jdbc(url=jdbc_url, table="crime_aggregates", properties=jdbc_props)
         )
 
+    def write_anomalies(batch_df, batch_id):
+        (
+            batch_df.write.mode("append").jdbc(
+                url=jdbc_url, table="crime_anomalies", properties=jdbc_props
+            )
+        )
+
     # Write results
     query = (
         stream.foreachBatch(write_to_postgres)
@@ -196,9 +203,7 @@ def main():
     )
 
     anomaly_query = (
-        anomalies.writeStream.outputMode("append")
-        .format("console")
-        .option("truncate", False)
+        anomalies.writeStream.foreachBatch(write_anomalies)
         .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
         .start()
     )
