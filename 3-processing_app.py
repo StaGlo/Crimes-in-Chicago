@@ -91,6 +91,10 @@ def main():
     )
     crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
+    # Remove leading zeros from IUCR in both streaming and static dataframes
+    crimes = crimes.withColumn("IUCR", F.regexp_replace(F.col("IUCR"), "^0+", ""))
+    iucr_df = iucr_df.withColumn("IUCR", F.regexp_replace(F.col("IUCR"), "^0+", ""))
+
     # Enrich with IUCR static data
     enriched = crimes.join(iucr_df, on="IUCR", how="left")
 
