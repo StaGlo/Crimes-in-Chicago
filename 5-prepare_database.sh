@@ -33,6 +33,7 @@ until docker exec "${CONTAINER_NAME}" pg_isready -U "${DB_USER}" -d "${DB_NAME}"
     echo -n "."
     sleep 1
 done
+sleep 5
 echo " ready!"
 
 # --- Drop and recreate the database ---
