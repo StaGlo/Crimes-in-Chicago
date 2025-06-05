@@ -19,21 +19,21 @@ fi
 DELAY_OPTION="$1"
 if [[ "$DELAY_OPTION" != "A" && "$DELAY_OPTION" != "C" ]]; then
     echo "Invalid delay: '$DELAY_OPTION'. Must be 'A' or 'C'."
-    echo "Usage: $0 [A|C]"
+    echo "Usage: $0 [A|C] [D] [P]"
     exit 1
 fi
 
 DAYS_OPTION="$2"
 if [[ ! "$DAYS_OPTION" =~ ^[0-9]+$ ]]; then
     echo "Invalid days: '$DAYS_OPTION'. Must be a positive integer."
-    echo "Usage: $0 [A|C] [P] [D]"
+    echo "Usage: $0 [A|C] [D] [P]"
     exit 1
 fi
 
 PERCENTAGE_OPTION="$3"
 if [[ ! "$PERCENTAGE_OPTION" =~ ^[0-9]+$ ]] || [[ "$PERCENTAGE_OPTION" -lt 0 ]] || [[ "$PERCENTAGE_OPTION" -gt 100 ]]; then
     echo "Invalid percentage: '$PERCENTAGE_OPTION'. Must be an integer between 0 and 100."
-    echo "Usage: $0 [A|C] [P] [D]"
+    echo "Usage: $0 [A|C] [D] [P]"
     exit 1
 fi
 
