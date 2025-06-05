@@ -5,9 +5,7 @@ import socket
 
 def main():
     # Argument parser for command line options
-    parser = argparse.ArgumentParser(
-        description="Spark Structured Streaming Crime Aggregator"
-    )
+    parser = argparse.ArgumentParser(description="Spark Structured Streaming Crime Aggregator")
     parser.add_argument(
         "--bootstrap-servers",
         required=True,
@@ -34,12 +32,8 @@ def main():
         required=True,
         help="Delay mode: A/C",
     )
-    parser.add_argument(
-        "-D", "--window-days", type=int, default=7, help="Anomaly parameter: D"
-    )
-    parser.add_argument(
-        "-P", "--threshold", type=float, default=40.0, help="Anomaly parameter: P"
-    )
+    parser.add_argument("-D", "--window-days", type=int, default=7, help="Anomaly parameter: D")
+    parser.add_argument("-P", "--threshold", type=float, default=40.0, help="Anomaly parameter: P")
     args = parser.parse_args()
 
     # Get hostname
@@ -91,10 +85,8 @@ def main():
 
     # Flatten the struct, parse timestamp and drop redundant columns
     crimes = crimes.select("crime.*")
-    crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date")))
-    crimes = crimes.withColumn(
-        "year_month", F.date_format(F.col("event_time"), "yyyy-MM")
-    )
+    crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date"), "yyyy-MM-dd HH:mm:ss"))
+    crimes = crimes.withColumn("year_month", F.date_format(F.col("event_time"), "yyyy-MM"))
     crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
     # Remove leading zeros from IUCR in both streaming and static dataframes
@@ -117,9 +109,7 @@ def main():
             F.col("District"),
         )
         .agg(
-            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
-                "fbi_indexed"
-            ),
+            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
             F.count("*").alias("total_crimes"),
         )
         .withColumn("pct_fbi", F.col("fbi_indexed") / F.col("total_crimes") * 100.0)
@@ -134,23 +124,48 @@ def main():
         )
     )
 
+    # Write anomalies to Postgres
+    anomaly_query = (
+        anomalies.writeStream.foreachBatch(
+            lambda df, bid: df.write.jdbc(
+                url=jdbc_url, table="crime_anomalies", mode="append", properties=jdbc_props
+            )
+        )
+        .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
+        .trigger(processingTime="24 hours")
+        .outputMode("update")
+        .start()
+    )
+
     # Create stream based on delay mode
     if args.delay == "A":
-        agg = enriched.groupBy("year_month", "category", "District").agg(
-            F.count("*").alias("total_crimes"),
-            F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
-            F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
-                "domestics"
-            ),
-            F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
-                "fbi_indexed"
-            ),
+        agg = (
+            enriched.withWatermark("event_time", "1 day")
+            .groupBy("year_month", "category", "District")
+            .agg(
+                F.count("*").alias("total_crimes"),
+                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
+                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias("domestics"),
+                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
+            )
         )
-        stream = agg.writeStream.outputMode("complete")
+
+        stream = (
+            agg.writeStream.outputMode("update")
+            .format("jdbc")
+            .option("url", jdbc_url)
+            .option("dbtable", "crime_aggregates")
+            .option("user", jdbc_props["user"])
+            .option("password", jdbc_props["password"])
+            .option("driver", jdbc_props["driver"])
+            .option("truncate", "false")
+            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates")
+            .start()
+        )
 
     elif args.delay == "C":
         windowed = (
-            enriched.withWatermark("event_time", "31 days")
+            enriched.withWatermark("event_time", "1 day")
             .groupBy(
                 F.window("event_time", "30 days").alias("w"),
                 F.col("category"),
@@ -158,15 +173,9 @@ def main():
             )
             .agg(
                 F.count("*").alias("total_crimes"),
-                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias(
-                    "arrests"
-                ),
-                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias(
-                    "domestics"
-                ),
-                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias(
-                    "fbi_indexed"
-                ),
+                F.sum(F.when(F.col("Arrest") == "True", 1).otherwise(0)).alias("arrests"),
+                F.sum(F.when(F.col("Domestic") == "True", 1).otherwise(0)).alias("domestics"),
+                F.sum(F.when(F.col("index_code") == "I", 1).otherwise(0)).alias("fbi_indexed"),
             )
             .select(
                 F.date_format(F.col("w.start"), "yyyy-MM").alias("year_month"),
@@ -178,37 +187,22 @@ def main():
                 "fbi_indexed",
             )
         )
-        stream = windowed.writeStream.outputMode("append")
 
-    # Writes each micro-batch into the crime_aggregates table
-    def write_to_postgres(batch_df, batch_id):
-        (
-            batch_df.write.mode("overwrite")
-            .option("truncate", "true")
-            .jdbc(url=jdbc_url, table="crime_aggregates", properties=jdbc_props)
+        stream = (
+            windowed.writeStream.outputMode("append")
+            .format("jdbc")
+            .option("url", jdbc_url)
+            .option("dbtable", "crime_aggregates")
+            .option("user", jdbc_props["user"])
+            .option("password", jdbc_props["password"])
+            .option("driver", jdbc_props["driver"])
+            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates")
+            .trigger()
+            .start()
         )
 
-    def write_anomalies(batch_df, batch_id):
-        (
-            batch_df.write.mode("append").jdbc(
-                url=jdbc_url, table="crime_anomalies", properties=jdbc_props
-            )
-        )
-
-    # Write results
-    query = (
-        stream.foreachBatch(write_to_postgres)
-        .option("checkpointLocation", args.checkpoint_location)
-        .start()
-    )
-
-    anomaly_query = (
-        anomalies.writeStream.foreachBatch(write_anomalies)
-        .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
-        .start()
-    )
-
-    query.awaitTermination()
+    # Await termination of both streams
+    stream.awaitTermination()
     anomaly_query.awaitTermination()
 
 
