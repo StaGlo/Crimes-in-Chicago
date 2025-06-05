@@ -16,6 +16,10 @@ docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
 SELECT * FROM ${TABLE};
 EOF
 
+docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
+SELECT * FROM crime_anomalies;
+EOF
+
 # --- Log completion ---
 echo
 echo "$(date '+%Y-%m-%d %H:%M:%S') Query complete."
