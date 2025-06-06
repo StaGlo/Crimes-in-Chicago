@@ -150,12 +150,12 @@ def main():
         )
 
         def write_to_postgres_a(batch_df, batch_id):
-            batch_df.write.mode("append").jdbc(
+            batch_df.write.mode("overwrite").jdbc(
                 url=jdbc_url, table="crime_aggregates", properties=jdbc_props
             )
 
         stream = (
-            agg.writeStream.outputMode("overwrite")
+            agg.writeStream.outputMode("update")
             .foreachBatch(write_to_postgres_a)
             .option("checkpointLocation", f"{args.checkpoint_location}/aggregates_A")
             .start()
