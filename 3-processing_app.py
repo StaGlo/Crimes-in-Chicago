@@ -125,13 +125,14 @@ def main():
     )
 
     # Write anomalies to Postgres
+    def write_anomalies(batch_df, batch_id):
+        batch_df.write.mode("overwrite").option("truncate", "true").jdbc(
+            url=jdbc_url, table="crime_anomalies", properties=jdbc_props
+        )
+
     anomaly_query = (
         anomalies.writeStream.outputMode("append")
-        .foreachBatch(
-            lambda df, bid: df.write.jdbc(
-                url=jdbc_url, table="crime_anomalies", mode="append", properties=jdbc_props
-            )
-        )
+        .foreachBatch(write_anomalies)
         .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
         .start()
     )
