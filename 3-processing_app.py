@@ -126,14 +126,13 @@ def main():
 
     # Write anomalies to Postgres
     anomaly_query = (
-        anomalies.writeStream.foreachBatch(
+        anomalies.writeStream.outputMode("append")
+        .foreachBatch(
             lambda df, bid: df.write.jdbc(
                 url=jdbc_url, table="crime_anomalies", mode="append", properties=jdbc_props
             )
         )
         .option("checkpointLocation", f"{args.checkpoint_location}/anomalies")
-        .trigger(processingTime="24 hours")
-        .outputMode("update")
         .start()
     )
 
