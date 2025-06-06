@@ -187,7 +187,7 @@ def main():
         )
 
         def write_to_postgres_c(batch_df, batch_id):
-            batch_df.write.mode("append").jdbc(
+            batch_df.write.mode("overwrite").option("truncate", "true").jdbc(
                 url=jdbc_url, table="crime_aggregates", properties=jdbc_props
             )
 
