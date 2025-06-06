@@ -155,7 +155,7 @@ def main():
             )
 
         stream = (
-            agg.writeStream.outputMode("update")  # tylko zmienione wiersze
+            agg.writeStream.outputMode("overwrite")
             .foreachBatch(write_to_postgres_a)
             .option("checkpointLocation", f"{args.checkpoint_location}/aggregates_A")
             .start()
