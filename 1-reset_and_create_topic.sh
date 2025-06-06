@@ -58,5 +58,9 @@ kafka-topics.sh \
   --describe \
   --topic "${TOPIC_NAME}"
 
+# --- Download used driver ---
+echo "$(date '+%Y-%m-%d %H:%M:%S') Downloading PostgreSQL JDBC driver..."
+wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
+
 # --- Log completion ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Environment reset and Kafka topic management script completed."

@@ -37,10 +37,6 @@ if [[ ! "$PERCENTAGE_OPTION" =~ ^[0-9]+$ ]] || [[ "$PERCENTAGE_OPTION" -lt 0 ]] 
     exit 1
 fi
 
-# --- Download used driver ---
-echo "$(date '+%Y-%m-%d %H:%M:%S') Downloading PostgreSQL JDBC driver..."
-wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
-
 # --- Run Spark job as YARN application ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Launching Spark streaming job..."
 echo "Delay configuration: $DELAY_OPTION"
