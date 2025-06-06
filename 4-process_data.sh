@@ -44,6 +44,8 @@ wget https://jdbc.postgresql.org/download/postgresql-42.6.0.jar
 # --- Run Spark job as YARN application ---
 echo "$(date '+%Y-%m-%d %H:%M:%S') Launching Spark streaming job..."
 echo "Delay configuration: $DELAY_OPTION"
+echo "Window days: $DAYS_OPTION"
+echo "Percentage threshold: $PERCENTAGE_OPTION"
 
 spark-submit \
     --master yarn \

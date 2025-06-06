@@ -85,7 +85,7 @@ def main():
 
     # Flatten the struct, parse timestamp and drop redundant columns
     crimes = crimes.select("crime.*")
-    crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date"), "yyyy-MM-dd HH:mm:ss"))
+    crimes = crimes.withColumn("event_time", F.to_timestamp(F.col("Date")))
     crimes = crimes.withColumn("year_month", F.date_format(F.col("event_time"), "yyyy-MM"))
     crimes = crimes.drop("Date", "ComArea", "Latitude", "Longitude")
 
@@ -149,16 +149,15 @@ def main():
             )
         )
 
+        def write_to_postgres_a(batch_df, batch_id):
+            batch_df.write.mode("append").jdbc(
+                url=jdbc_url, table="crime_aggregates", properties=jdbc_props
+            )
+
         stream = (
-            agg.writeStream.outputMode("update")
-            .format("jdbc")
-            .option("url", jdbc_url)
-            .option("dbtable", "crime_aggregates")
-            .option("user", jdbc_props["user"])
-            .option("password", jdbc_props["password"])
-            .option("driver", jdbc_props["driver"])
-            .option("truncate", "false")
-            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates")
+            agg.writeStream.outputMode("update")  # tylko zmienione wiersze
+            .foreachBatch(write_to_postgres_a)
+            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates_A")
             .start()
         )
 
@@ -187,16 +186,15 @@ def main():
             )
         )
 
+        def write_to_postgres_c(batch_df, batch_id):
+            batch_df.write.mode("append").jdbc(
+                url=jdbc_url, table="crime_aggregates", properties=jdbc_props
+            )
+
         stream = (
             windowed.writeStream.outputMode("append")
-            .format("jdbc")
-            .option("url", jdbc_url)
-            .option("dbtable", "crime_aggregates")
-            .option("user", jdbc_props["user"])
-            .option("password", jdbc_props["password"])
-            .option("driver", jdbc_props["driver"])
-            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates")
-            .trigger()
+            .foreachBatch(write_to_postgres_c)
+            .option("checkpointLocation", f"{args.checkpoint_location}/aggregates_C")
             .start()
         )
 

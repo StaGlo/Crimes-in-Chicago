@@ -8,13 +8,18 @@ DB_USER="postgres"         # Database user
 TABLE="crime_aggregates"   # Table to query
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') Connecting to Postgres container '${CONTAINER_NAME}'..."
+
+# --- Query aggregates ---
 echo "Displaying all rows from '${TABLE}' in database '${DB_NAME}':"
 echo
 
-# --- Execute the SELECT query inside the container ---
 docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
 SELECT * FROM ${TABLE};
 EOF
+
+# --- Query anomalies table ---
+echo "Displaying all rows from '${TABLE}' in database '${DB_NAME}':"
+echo
 
 docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" <<EOF
 SELECT * FROM crime_anomalies;
